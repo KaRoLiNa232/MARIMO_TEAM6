@@ -31,7 +31,7 @@ jobs:
         run: pip install "marimo>=0.17.8"
 
       - name: Export marimo app to static html (WASM)
-        run: marimo export html-wasm hw2_2.py -o dist --mode run
+        run: marimo export html-wasm hw2_2.py -o dist --mode run --base-url /MARIMO_TEAM6/
 
       - name: Add .nojekyll
         run: touch dist/.nojekyll
