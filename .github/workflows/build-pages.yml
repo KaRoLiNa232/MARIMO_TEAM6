@@ -2,7 +2,7 @@ name: Build and deploy marimo app
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -32,6 +32,13 @@ jobs:
 
       - name: Export marimo app to static html (WASM)
         run: marimo export html-wasm hw2_2.py -o dist --mode run
+
+      # 👇 ДОБАВЛЕНО: кладём public/ внутрь dist/,
+      # чтобы файлы были доступны по /public/all_v2.csv
+      - name: Copy public data into dist
+        run: |
+          mkdir -p dist/public
+          cp public/* dist/public/ || true
 
       - name: Add .nojekyll
         run: touch dist/.nojekyll
