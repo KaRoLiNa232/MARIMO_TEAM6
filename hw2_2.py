@@ -31,10 +31,14 @@ def _(mo):
     return
 
 
-# ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ HTTP С GITHUB PAGES ======
+# ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ raw.githubusercontent.com ======
 @app.cell
 def _(pd):
-    BASE_URL = "https://karolina232.github.io/MARIMO_TEAM6"
+    # читаем напрямую сырой файл из репозитория
+    BASE_URL = (
+        "https://raw.githubusercontent.com/"
+        "KaRoLina232/MARIMO_TEAM6/refs/heads/main"
+    )
     df = pd.read_csv(f"{BASE_URL}/public/all_v2.csv")
     return (df,)
 
