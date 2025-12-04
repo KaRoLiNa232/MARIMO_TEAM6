@@ -27,10 +27,14 @@ jobs:
           python-version: '3.11'
 
       - name: Install marimo
-        run: pip install "marimo>=0.18.2"
+        # версию можно привязать к той, что в __generated_with
+        run: pip install "marimo>=0.17.8"
 
-      - name: Export marimo app to static html
-        run: marimo export html-wasm hw2_2.py -o dist --mode run --base-url /MARIMO_TEAM6/
+      - name: Export marimo app to static html (WASM)
+        run: marimo export html-wasm hw2_2.py -o dist --mode run
+
+      - name: Add .nojekyll
+        run: touch dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
