@@ -33,9 +33,21 @@ def _(mo):
     return
 
 
+# ====== ПУТИ К ДАННЫМ (public/) ======
 @app.cell
-def _(pd):
-    df = pd.read_csv('all_v2.csv')
+def _():
+    from pathlib import Path
+
+    # Путь к файлу ноутбука
+    NOTEBOOK_DIR = Path(marimo.notebook_location())
+    # Внутри него папка public с all_v2.csv и model_3.pkl
+    DATA_DIR = NOTEBOOK_DIR / "public"
+    return DATA_DIR,
+
+
+@app.cell
+def _(pd, DATA_DIR):
+    df = pd.read_csv(DATA_DIR / "all_v2.csv")
     return (df,)
 
 
@@ -50,7 +62,7 @@ def _(df_1, pd):
     df_2 = df_1[df_1['price'] > 0]
     df_2 = df_2[df_2['rooms'] > 0]
     df_2 = df_2[(df_2['area'] >= 10) & (df_2['area'] <= 500)]
-    df_2 = df_2[(df_2['kitchen_area'] >= 2) & (df_2['kitchen_area'] <= 0.5 *df_2['area'])]
+    df_2 = df_2[(df_2['kitchen_area'] >= 2) & (df_2['kitchen_area'] <= 0.5 * df_2['area'])]
 
     df_2['building_type'] = df_2['building_type'].astype(str)
     df_2.loc[df_2['building_type'] == '0', 'building_type'] = 'Other'
@@ -77,14 +89,14 @@ def _(df_1, pd):
 @app.cell
 def _(df_2):
     df_3 = df_2[df_2['level'] <= df_2['levels']]
-
     df_3 = df_3.drop(columns=['geo_lat', 'geo_lon'])
     return (df_3,)
 
 
 @app.cell
 def _(df_3, pd):
-    df_4= df_3[df_3['price'] < df_3['price'].quantile(0.99)] #droppin extremal numbers to preven anomalies
+    # droppin extremal numbers to preven anomalies
+    df_4 = df_3[df_3['price'] < df_3['price'].quantile(0.99)]
     df_4 = df_4[df_4['price'] > df_4['price'].quantile(0.01)]
 
     df_4 = pd.get_dummies(df_4)
@@ -102,19 +114,22 @@ def _(mo):
 @app.cell
 def _(df_4):
     from sklearn.model_selection import train_test_split
+
     X = df_4.drop(columns=['price'])
     y = df_4['price']
 
-    train_X, holdout_X, train_y, holdout_y = train_test_split(X, y, test_size=0.4, random_state=1)
+    train_X, holdout_X, train_y, holdout_y = train_test_split(
+        X, y, test_size=0.4, random_state=1
+    )
     return train_X, train_y
 
 
 @app.cell
-def _():
+def _(DATA_DIR):
     import joblib
 
-    model1 = joblib.load("model_3.pkl")
-
+    # модель тоже лежит в public/
+    model1 = joblib.load(DATA_DIR / "model_3.pkl")
     return (model1,)
 
 
@@ -173,7 +188,7 @@ def _():
         "2484": "Ханты-Мансийский автономный округ",
         "4240": "Липецкая область",
         "5789": "Владимирская область",
-        "14880": "Ямало-Ненецкий автономный округ", 
+        "14880": "Ямало-Ненецкий автономный округ",
         "1491": "Рязанская область",
         "2885": "Чеченская Республика",
         "5794": "Смоленская область",
@@ -216,17 +231,18 @@ def _():
 @app.cell
 def _():
     building_type_dict = {
-            "Other": "Other",
-            "Panel": "Panel",
-            "Monolithic": "Monolithic",
-            "Brick": "Brick",
-            "Block": "Block",
-            "Wooden": "Wooden"}
+        "Other": "Other",
+        "Panel": "Panel",
+        "Monolithic": "Monolithic",
+        "Brick": "Brick",
+        "Block": "Block",
+        "Wooden": "Wooden",
+    }
 
-    object_type_dict={
-            "Secondary": "seconadary",
-            "New building": "new_building",
-        }
+    object_type_dict = {
+        "Secondary": "seconadary",
+        "New building": "new_building",
+    }
     return building_type_dict, object_type_dict
 
 
@@ -238,14 +254,14 @@ def _():
 
 @app.cell
 def _(building_type_dict, mo, object_type_dict, region_code_by_name):
-    area_slider = mo.ui.slider(10, 250, 1,label="Total area, m²")
+    area_slider = mo.ui.slider(10, 250, 1, label="Total area, m²")
     rooms_slider = mo.ui.slider(-1, 10, 1, label="Rooms (-1 = studio)")
-    level_slider = mo.ui.slider(1, 30, 1,  label="Floor")
+    level_slider = mo.ui.slider(1, 30, 1, label="Floor")
     levels_slider = mo.ui.slider(1, 50, 1, label="Total floors")
-    kitchen_slider = mo.ui.slider(2, 168, 1,label="Kitchen area, m²")
+    kitchen_slider = mo.ui.slider(2, 168, 1, label="Kitchen area, m²")
     region_dropdown = mo.ui.dropdown(
-        options=region_code_by_name,   # ключи = названия, значения = коды
-        value="Москва",                
+        options=region_code_by_name,  # ключи = названия, значения = коды
+        value="Москва",
         label="Region",
     )
 
@@ -265,13 +281,21 @@ def _(building_type_dict, mo, object_type_dict, region_code_by_name):
         [
             mo.md("## **1. Set apartment parameters**"),
             mo.md(
-                "Hello! Use the controls below to describe the apartment. The model will use these parameters to estimate the market price."),
+                "Hello! Use the controls below to describe the apartment. "
+                "The model will use these parameters to estimate the market price."
+            ),
             mo.hstack(
                 [
-                    mo.vstack([region_dropdown, building_type_dropdown, object_type_dropdown, rooms_slider], gap=1),
-                    mo.vstack([area_slider, kitchen_slider, level_slider, levels_slider], gap=1),
+                    mo.vstack(
+                        [region_dropdown, building_type_dropdown, object_type_dropdown, rooms_slider],
+                        gap=1,
+                    ),
+                    mo.vstack(
+                        [area_slider, kitchen_slider, level_slider, levels_slider],
+                        gap=1,
+                    ),
                 ],
-                gap=5,  
+                gap=5,
             ),
         ],
         gap=1,
@@ -308,7 +332,7 @@ def _(
         row = {col: 0 for col in feature_cols}
 
         if "region" in row:
-            row["region"] = region_dropdown.value 
+            row["region"] = region_dropdown.value
         if "area" in row:
             row["area"] = area_slider.value
         if "rooms" in row:
@@ -332,177 +356,17 @@ def _(
             if col in row:
                 row[col] = 0
 
-        bt_value = building_type_dropdown.value        
-        bt_col = f"building_type_{bt_value}"           
+        bt_value = building_type_dropdown.value
+        bt_col = f"building_type_{bt_value}"
         if bt_col in row:
             row[bt_col] = 1
-
 
         ot_cols = ["object_type_new_building", "object_type_seconadary"]
         for col in ot_cols:
             if col in row:
                 row[col] = 0
 
-        ot_value = object_type_dropdown.value          
+        ot_value = object_type_dropdown.value
         ot_col = f"object_type_{ot_value}"
         if ot_col in row:
-            row[ot_col] = 1
-
-
-        return pd.DataFrame([row], columns=feature_cols)
-
-
-
-    X_current = build_features_row()
-    predicted_price = float(model1.predict(X_current)[0])
-    return (predicted_price,)
-
-
-@app.cell
-def _(
-    building_type_dropdown,
-    object_type_dropdown,
-    plt,
-    predicted_price,
-    region_dropdown,
-    train_X,
-    train_y,
-):
-    # Prepare offers_df 
-    offers_df = train_X.copy()
-    offers_df["price"] = train_y.values   
-
-    # recover building_type and object_type from dummies
-    bt_cols = [c for c in offers_df.columns if c.startswith("building_type_")]
-    offers_df["building_type"] = (
-        offers_df[bt_cols]
-        .idxmax(axis=1)
-        .str.replace("building_type_", "", regex=False)
-    )
-
-    ot_cols = ["object_type_new_building", "object_type_seconadary"]
-    offers_df["object_type"] = (
-        offers_df[ot_cols]
-        .idxmax(axis=1)
-        .str.replace("object_type_", "", regex=False)
-    )
-
-    # Price distribution in region
-    def plot_price_distribution_region():
-        region = region_dropdown.value
-        our_price = predicted_price
-
-        prices = offers_df.loc[offers_df["region"] == region, "price"]
-
-        fig, ax = plt.subplots(figsize=(6, 3))
-
-        n, bins, patches = ax.hist(prices, bins=30, edgecolor="black")
-
-        import numpy as np
-        bin_index = np.digitize(our_price, bins) - 1
-
-        if 0 <= bin_index < len(patches):
-            patches[bin_index].set_facecolor("red")
-            patches[bin_index].set_alpha(0.8)
-
-        ax.set_title("Price distribution in selected region")
-        ax.set_xlabel("Price, RUB")
-        ax.set_ylabel("Number of listings")
-        fig.tight_layout()
-        return fig
-
-
-
-    # Popularity of (building_type, object_type) in region
-    def plot_type_popularity_region():
-        region = region_dropdown.value
-
-        sel_bt = building_type_dropdown.value      
-        sel_ot = object_type_dropdown.value    
-
-        subset = offers_df[offers_df["region"] == region].copy()
-
-        fig, ax = plt.subplots(figsize=(6, 3))
-
-        counts = (subset
-            .groupby(["building_type", "object_type"])
-            .size()
-            .reset_index(name="count")
-            .sort_values("count", ascending=False)
-        )
-
-        counts["label"] = counts["building_type"] + " / " + counts["object_type"]
-
-        mask_selected = (
-            (counts["building_type"] == sel_bt) &
-            (counts["object_type"] == sel_ot)
-        )
-
-        bars = ax.bar(range(len(counts)), counts["count"])
-
-        for i, bar in enumerate(bars):
-            if mask_selected.iloc[i]:
-                bar.set_facecolor("red")
-                bar.set_alpha(0.8)
-
-        ax.set_xticks(range(len(counts)))
-        ax.set_xticklabels(counts["label"], rotation=45, ha="right")
-        ax.set_ylabel("Number of listings")
-        ax.set_title("Popularity of types in selected region")
-
-        fig.tight_layout()
-        return fig
-
-
-    fig_prices = plot_price_distribution_region()
-    fig_popularity = plot_type_popularity_region()
-    return fig_popularity, fig_prices
-
-
-@app.cell
-def _(
-    area_slider,
-    building_type_dropdown,
-    fig_popularity,
-    fig_prices,
-    kitchen_slider,
-    level_slider,
-    levels_slider,
-    mo,
-    object_type_dropdown,
-    predicted_price,
-    region_dropdown,
-    rooms_slider,
-):
-    mo.hstack(
-        [mo.vstack(
-            [
-                mo.md("## **2. Predicted price from ML model**"),
-                mo.md("### **Chosen properties:**\n"),
-                mo.md(
-                    f"Region:  {region_dropdown.value}   \n"
-                    f"Building type: {building_type_dropdown.value}   \n"
-                    f"Object type: {object_type_dropdown.value}   \n"
-                    f"Total area: {area_slider.value}   \n"
-                    f"Rooms:  {rooms_slider.value}  \n"
-                    f"Floor:  {level_slider.value}   \n"
-                    f"Total floors: {levels_slider.value}  \n"
-                    f"Kitchen area: {kitchen_slider.value}   \n"
-                ),
-                mo.md("### **Predicted price:**"),
-                mo.md(f"{predicted_price:,.0f} RUB"), 
-            ], gap=1),
-         mo.vstack(
-            [
-                mo.md("### .        \n"),
-                mo.md("### **Statistics:**\n"),
-                fig_prices,
-                fig_popularity
-            ], gap=1)
-        ], gap=2
-    )
-    return
-
-
-if __name__ == "__main__":
-    app.run()
+            row
