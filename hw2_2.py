@@ -31,22 +31,11 @@ def _(mo):
     return
 
 
-# ====== ПУТИ К ДАННЫМ (public/) ======
+# ====== ЧТЕНИЕ ДАННЫХ ИЗ public/ ======
 @app.cell
-def _():
-    import marimo as mo
-    from pathlib import Path
-
-    # Путь к файлу ноутбука
-    NOTEBOOK_DIR = Path(mo.notebook_location())
-    # Внутри него папка public с all_v2.csv и model_3.pkl
-    DATA_DIR = NOTEBOOK_DIR / "public"
-    return (DATA_DIR,)
-
-
-@app.cell
-def _(pd, DATA_DIR):
-    df = pd.read_csv(DATA_DIR / "all_v2.csv")
+def _(pd):
+    # Файл лежит в public/all_v2.csv
+    df = pd.read_csv("public/all_v2.csv")
     return (df,)
 
 
@@ -126,11 +115,11 @@ def _(df_4):
 
 
 @app.cell
-def _(DATA_DIR):
+def _():
     import joblib
 
-    # модель тоже лежит в public/
-    model1 = joblib.load(DATA_DIR / "model_3.pkl")
+    # модель лежит в public/model_3.pkl
+    model1 = joblib.load("public/model_3.pkl")
     return (model1,)
 
 
