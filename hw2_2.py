@@ -31,15 +31,12 @@ def _(mo):
     return
 
 
-# ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ raw.githubusercontent.com ======
+# ====== ЧТЕНИЕ ДАННЫХ ИЗ public/ (GitHub Pages) ======
 @app.cell
 def _(pd):
-    # Читаем ровно тот CSV, что лежит в репозитории
-    url = (
-        "https://raw.githubusercontent.com/"
-        "KaRoLina232/MARIMO_TEAM6/main/public/all_v2.csv"
-    )
-    df = pd.read_csv(url)
+    # При деплое GitHub Pages файл копируется в dist/public/all_v2.csv,
+    # поэтому в браузере он доступен по пути /public/all_v2.csv
+    df = pd.read_csv("/public/all_v2.csv")
     return (df,)
 
 
