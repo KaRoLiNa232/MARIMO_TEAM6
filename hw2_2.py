@@ -34,9 +34,12 @@ def _(mo):
 # ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ raw.githubusercontent.com ======
 @app.cell
 def _(pd):
-    # читаем напрямую сырой файл из репозитория (ВАЖНО: без refs/heads)
-    BASE_URL = "https://raw.githubusercontent.com/KaRoLina232/MARIMO_TEAM6/main"
-    df = pd.read_csv(f"{BASE_URL}/public/all_v2.csv")
+    # Читаем ровно тот CSV, что лежит в репозитории
+    url = (
+        "https://raw.githubusercontent.com/"
+        "KaRoLina232/MARIMO_TEAM6/main/public/all_v2.csv"
+    )
+    df = pd.read_csv(url)
     return (df,)
 
 
@@ -55,18 +58,23 @@ def _(df_1, pd):
         (df_2["kitchen_area"] >= 2) & (df_2["kitchen_area"] <= 0.5 * df_2["area"])
     ]
 
-    df_2["building_type"] = df_2["building_type"].astype(str)
-    df_2.loc[df_2["building_type"] == "0", "building_type"] = "Other"
-    df_2.loc[df_2["building_type"] == "1", "building_type"] = "Panel"
-    df_2.loc[df_2["building_type"] == "2", "building_type"] = "Monolithic"
-    df_2.loc[df_2["building_type"] == "3", "building_type"] = "Brick"
-    df_2.loc[df_2["building_type"] == "4", "building_type"] = "Blocky"
-    df_2.loc[df_2["building_type"] == "5", "building_type"] = "Wooden"
+    # ====== корректный маппинг building_type по числовым кодам ======
+    bt_map = {
+        0: "Other",
+        1: "Panel",
+        2: "Monolithic",
+        3: "Brick",
+        4: "Blocky",
+        5: "Wooden",
+    }
+    df_2["building_type"] = df_2["building_type"].astype("Int64").map(bt_map)
 
-    df_2["object_type"] = df_2["object_type"].astype(str)
-    # без опечатки: secondary
-    df_2.loc[df_2["object_type"] == "1", "object_type"] = "secondary"
-    df_2.loc[df_2["object_type"] == "11", "object_type"] = "new_building"
+    # ====== корректный маппинг object_type по числовым кодам ======
+    ot_map = {
+        1: "secondary",
+        11: "new_building",
+    }
+    df_2["object_type"] = df_2["object_type"].astype("Int64").map(ot_map)
 
     df_2["datetime_str"] = df_2["date"].astype(str) + " " + df_2["time"].astype(str)
     df_2["datetime"] = pd.to_datetime(df_2["datetime_str"])
@@ -110,9 +118,6 @@ def _(df_4):
 
     X = df_4.drop(columns=["price"])
     y = df_4["price"]
-
-    # Можно при желании сделать downsample, если будет долго
-    # sample = df_4.sample(n=5000, random_state=1) if len(df_4) > 5000 else df_4
 
     train_X, holdout_X, train_y, holdout_y = train_test_split(
         X, y, test_size=0.4, random_state=1
@@ -236,8 +241,7 @@ def _():
         "Panel": "Panel",
         "Monolithic": "Monolithic",
         "Brick": "Brick",
-        # ключ для пользователя "Block", а значение = "Blocky" из данных
-        "Block": "Blocky",
+        "Block": "Blocky",  # отображение "Block", значение "Blocky"
         "Wooden": "Wooden",
     }
 
@@ -337,7 +341,6 @@ def _(
     feature_cols = list(train_X.columns)
 
     def build_features_row():
-        # изначально всё = 0
         row = {col: 0 for col in feature_cols}
 
         if "region" in row:
@@ -357,8 +360,7 @@ def _(
         bt_cols = [c for c in feature_cols if c.startswith("building_type_")]
         for col in bt_cols:
             row[col] = 0
-
-        bt_value = building_type_dropdown.value  # 'Other', 'Panel', ..., 'Blocky'
+        bt_value = building_type_dropdown.value  # 'Panel', 'Brick', 'Blocky', ...
         bt_col = f"building_type_{bt_value}"
         if bt_col in row:
             row[bt_col] = 1
@@ -367,7 +369,6 @@ def _(
         ot_cols = [c for c in feature_cols if c.startswith("object_type_")]
         for col in ot_cols:
             row[col] = 0
-
         ot_value = object_type_dropdown.value  # 'secondary' или 'new_building'
         ot_col = f"object_type_{ot_value}"
         if ot_col in row:
@@ -401,7 +402,7 @@ def _(
         .str.replace("building_type_", "", regex=False)
     )
 
-    # восстановление object_type из one-hot (динамически)
+    # восстановление object_type из one-hot
     ot_cols = [c for c in offers_df.columns if c.startswith("object_type_")]
     if ot_cols:
         offers_df["object_type"] = (
