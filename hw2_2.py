@@ -34,11 +34,8 @@ def _(mo):
 # ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ raw.githubusercontent.com ======
 @app.cell
 def _(pd):
-    # читаем напрямую сырой файл из репозитория
-    BASE_URL = (
-        "https://raw.githubusercontent.com/"
-        "KaRoLina232/MARIMO_TEAM6/refs/heads/main"
-    )
+    # читаем напрямую сырой файл из репозитория (ВАЖНО: без refs/heads)
+    BASE_URL = "https://raw.githubusercontent.com/KaRoLina232/MARIMO_TEAM6/main"
     df = pd.read_csv(f"{BASE_URL}/public/all_v2.csv")
     return (df,)
 
@@ -67,7 +64,8 @@ def _(df_1, pd):
     df_2.loc[df_2["building_type"] == "5", "building_type"] = "Wooden"
 
     df_2["object_type"] = df_2["object_type"].astype(str)
-    df_2.loc[df_2["object_type"] == "1", "object_type"] = "seconadary"
+    # без опечатки: secondary
+    df_2.loc[df_2["object_type"] == "1", "object_type"] = "secondary"
     df_2.loc[df_2["object_type"] == "11", "object_type"] = "new_building"
 
     df_2["datetime_str"] = df_2["date"].astype(str) + " " + df_2["time"].astype(str)
@@ -238,12 +236,13 @@ def _():
         "Panel": "Panel",
         "Monolithic": "Monolithic",
         "Brick": "Brick",
-        "Block": "Block",
+        # ключ для пользователя "Block", а значение = "Blocky" из данных
+        "Block": "Blocky",
         "Wooden": "Wooden",
     }
 
     object_type_dict = {
-        "Secondary": "seconadary",
+        "Secondary": "secondary",
         "New building": "new_building",
     }
     return building_type_dict, object_type_dict
@@ -338,6 +337,7 @@ def _(
     feature_cols = list(train_X.columns)
 
     def build_features_row():
+        # изначально всё = 0
         row = {col: 0 for col in feature_cols}
 
         if "region" in row:
@@ -353,29 +353,22 @@ def _(
         if "kitchen_area" in row:
             row["kitchen_area"] = kitchen_slider.value
 
-        bt_cols = [
-            "building_type_Blocky",
-            "building_type_Brick",
-            "building_type_Monolithic",
-            "building_type_Other",
-            "building_type_Panel",
-            "building_type_Wooden",
-        ]
+        # building_type_* one-hot
+        bt_cols = [c for c in feature_cols if c.startswith("building_type_")]
         for col in bt_cols:
-            if col in row:
-                row[col] = 0
+            row[col] = 0
 
-        bt_value = building_type_dropdown.value
+        bt_value = building_type_dropdown.value  # 'Other', 'Panel', ..., 'Blocky'
         bt_col = f"building_type_{bt_value}"
         if bt_col in row:
             row[bt_col] = 1
 
-        ot_cols = ["object_type_new_building", "object_type_seconadary"]
+        # object_type_* one-hot
+        ot_cols = [c for c in feature_cols if c.startswith("object_type_")]
         for col in ot_cols:
-            if col in row:
-                row[col] = 0
+            row[col] = 0
 
-        ot_value = object_type_dropdown.value
+        ot_value = object_type_dropdown.value  # 'secondary' или 'new_building'
         ot_col = f"object_type_{ot_value}"
         if ot_col in row:
             row[ot_col] = 1
@@ -400,6 +393,7 @@ def _(
     offers_df = train_X.copy()
     offers_df["price"] = train_y.values
 
+    # восстановление building_type из one-hot
     bt_cols = [c for c in offers_df.columns if c.startswith("building_type_")]
     offers_df["building_type"] = (
         offers_df[bt_cols]
@@ -407,10 +401,16 @@ def _(
         .str.replace("building_type_", "", regex=False)
     )
 
-    ot_cols = ["object_type_new_building", "object_type_seconadary"]
-    offers_df["object_type"] = (
-        offers_df[ot_cols].idxmax(axis=1).str.replace("object_type_", "", regex=False)
-    )
+    # восстановление object_type из one-hot (динамически)
+    ot_cols = [c for c in offers_df.columns if c.startswith("object_type_")]
+    if ot_cols:
+        offers_df["object_type"] = (
+            offers_df[ot_cols]
+            .idxmax(axis=1)
+            .str.replace("object_type_", "", regex=False)
+        )
+    else:
+        offers_df["object_type"] = "unknown"
 
     def plot_price_distribution_region():
         import numpy as np
