@@ -31,11 +31,11 @@ def _(mo):
     return
 
 
-# ====== ЧТЕНИЕ ДАННЫХ ИЗ public/ ======
+# ====== ЧТЕНИЕ ДАННЫХ ЧЕРЕЗ HTTP С GITHUB PAGES ======
 @app.cell
 def _(pd):
-    # Файл лежит в public/all_v2.csv
-    df = pd.read_csv("public/all_v2.csv")
+    BASE_URL = "https://karolina232.github.io/MARIMO_TEAM6"
+    df = pd.read_csv(f"{BASE_URL}/public/all_v2.csv")
     return (df,)
 
 
@@ -101,6 +101,7 @@ def _(mo):
     return
 
 
+# ====== train/holdout ======
 @app.cell
 def _(df_4):
     from sklearn.model_selection import train_test_split
@@ -108,18 +109,27 @@ def _(df_4):
     X = df_4.drop(columns=["price"])
     y = df_4["price"]
 
+    # Можно при желании сделать downsample, если будет долго
+    # sample = df_4.sample(n=5000, random_state=1) if len(df_4) > 5000 else df_4
+
     train_X, holdout_X, train_y, holdout_y = train_test_split(
         X, y, test_size=0.4, random_state=1
     )
     return train_X, train_y
 
 
+# ====== Модель: обучаем прямо в браузере, без .pkl ======
 @app.cell
-def _():
-    import joblib
+def _(train_X, train_y):
+    from sklearn.ensemble import RandomForestRegressor
 
-    # модель лежит в public/model_3.pkl
-    model1 = joblib.load("public/model_3.pkl")
+    model1 = RandomForestRegressor(
+        n_estimators=50,
+        max_depth=12,
+        random_state=1,
+        n_jobs=-1,
+    )
+    model1.fit(train_X, train_y)
     return (model1,)
 
 
@@ -383,11 +393,9 @@ def _(
     train_X,
     train_y,
 ):
-    # Prepare offers_df
     offers_df = train_X.copy()
     offers_df["price"] = train_y.values
 
-    # recover building_type and object_type from dummies
     bt_cols = [c for c in offers_df.columns if c.startswith("building_type_")]
     offers_df["building_type"] = (
         offers_df[bt_cols]
